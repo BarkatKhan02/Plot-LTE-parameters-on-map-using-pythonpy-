@@ -2,9 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib.patches as mpatches
-from mpl_toolkits.basemap import Basemap
 import sys
-#read input data
 
 
 class DataFrame(pd.DataFrame):
