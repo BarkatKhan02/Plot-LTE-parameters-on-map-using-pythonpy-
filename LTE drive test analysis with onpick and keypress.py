@@ -1,7 +1,6 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
-import matplotlib as mpl
 import matplotlib.patches as mpatches
 from mpl_toolkits.basemap import Basemap
 import sys
@@ -9,8 +8,8 @@ import sys
 
 
 class DataFrame(pd.DataFrame):
-    __params_dict = {'cqi':'lte_cqi_cw0_1', 'rsrp':'lte_inst_rsrp_1', 'rsrq':'lte_inst_rsrq_1',
-                     'pci':'lte_physical_cell_id_1', 'snr': 'lte_sinr_1', 'lat':'positioning_lat', 'lon': 'positioning_lon'}
+    __params_dict = {'cqi': 'lte_cqi_cw0_1', 'rsrp': 'lte_inst_rsrp_1', 'rsrq': 'lte_inst_rsrq_1',
+                     'pci': 'lte_physical_cell_id_1', 'snr': 'lte_sinr_1', 'lat': 'positioning_lat', 'lon': 'positioning_lon'}
     
     def __init__(self, data):
         super().__init__()
