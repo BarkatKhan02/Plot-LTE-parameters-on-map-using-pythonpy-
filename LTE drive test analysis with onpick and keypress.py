@@ -1,137 +1,160 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
+import matplotlib as mpl
 import matplotlib.patches as mpatches
 from mpl_toolkits.basemap import Basemap
 import sys
 #read input data
-data = pd.read_csv('tmp_export.csv')
 
-#remove nan values
-data['lte_cqi_cw0_1'].replace('', np.nan, inplace=True)
 
-data.dropna(subset=['lte_cqi_cw0_1'], inplace=True)
-data2=data.drop_duplicates(['positioning_lon'])
-
-#create list of parameters in desired format
-
-li = []
-rsrp = []
-rsrq = []
-pci = []
-snr = []
-
-for x in data2.lte_cqi_cw0_1:
-    li.append(float(x))
-
-for x in data2.lte_inst_rsrp_1:
-    rsrp.append(float(x))
+class DataFrame(pd.DataFrame):
+    __params_dict = {'cqi':'lte_cqi_cw0_1', 'rsrp':'lte_inst_rsrp_1', 'rsrq':'lte_inst_rsrq_1',
+                     'pci':'lte_physical_cell_id_1', 'snr': 'lte_sinr_1', 'lat':'positioning_lat', 'lon': 'positioning_lon'}
     
-for x in data2.lte_inst_rsrq_1:
-    rsrq.append(float(x))
-    
-for x in data2.lte_physical_cell_id_1:
-    pci.append(int(x))
-    
-for x in data2.lte_sinr_1:
-    snr.append(float(x))
-    
-x1=[]
-x2=[]
-for x in li:
-    if 0<x<7:
-        x1.append(x)
-    elif 7<=x<=15:
-        x2.append(x)
-        
-#create x and y axis data
-x = []
-y = []
-for a in data2.positioning_lon:
-    x.append(float(a))
-for a in data2.positioning_lat:
-    y.append(float(a))
+    def __init__(self, data):
+        super().__init__()
+        self.data = data
+
+    def remove_empty(self, columnname, npnan):
+        self.data[columnname].replace('', npnan, inplace=True)
+        self.data.dropna(subset=[columnname], inplace=True)
+
+    def drop_duplicate(self, columnname):
+        self.data2 = self.data.drop_duplicates([columnname])
+
+    def read_data(self):
+        return self.data2
+
+    def params_list(self):
+        self.dict_items = self.__params_dict.items()
+        self.dict_keys = self.__params_dict.keys()
+        self.names_list = []
+        g = globals()
+        for x in self.dict_items:
+            listname = str(x[0])
+            print(listname)
+            self.listname = listname
+            print(self.listname)
+            colname = x[1]
+            self.names_list.append(self.listname)
+            print(self.names_list)
+            g['li_{0}'.format(x[0])] = [y for y in self.data2[colname]]
+        return self.names_list
+
+    def get_cqi_percentage(self):
+        self.low_cqi = [x for x in li_cqi if 0 < x < 7]
+        self.high_cqi = [x for x in li_cqi if 7 <= x <= 15]
+        __low_per = round((len(self.low_cqi)/len(li_cqi))*100, 2)
+        __high_per = round((len(self.high_cqi)/len(li_cqi))*100, 2)
+        return __low_per, __high_per
 
 
-low_per = round((len(x1)/len(li)*100),2)
-high_per = round((len(x2)/len(li)*100),2)
+class Plot():
 
-#set color condition
-c = np.where(data2.lte_cqi_cw0_1 < 7, 'r', 'g')
-#plot the map
-fig, ax=plt.subplots()
-scatter=ax.scatter(x,y,c=c,picker=1)
- 
-#give labels and title
-plt.xlabel('Longitude')
-plt.ylabel('lattitude')
-plt.title('CQI plot\n' + str(len(li))+" samples")
+    def __init__(self):
+        self.fig, self.ax = plt.subplots()
 
-# to show values of each point
-#for i, value in enumerate(li):
- #   
-  #  annot = ax.annotate(value,(x[i], y[i]))
-   # 
-    #annot.set_visible(False)
+    def scatterplot(self, x, y, col):
+        self.c = np.where(col < 7, 'r', 'g')
+        self.scatter = self.ax.scatter(x, y, c=self.c, picker=1)
 
-annot = ax.annotate("", xy=(0,0), xytext=(20,20),textcoords="offset points",
-                    bbox=dict(boxstyle="round", fc="w"),arrowprops=dict(arrowstyle="->"))
-annot.set_visible(False)
+    def set_xlabel(self, label):
+        plt.xlabel(label)
 
-def update_annot(ind):
-    pos = scatter.get_offsets()[ind]
-    annot.xy = pos
-    text = " CQI {}".format(" ".join([str(round(li[ind],2))]))
-    text = " CQI {}\n RSRP {}\n RSRQ {}\n PCI {}\n SINR {}".format(" ".join([str(round(li[ind], 2))]),
-                                                                   " ".join(
-                                                                       [str(round(rsrp[ind], 2))]),
-                                                                   " ".join(
-                                                                       [str(round(rsrq[ind], 2))]),
-                                                                   " ".join([str(pci[ind])]),
-                                                                   " ".join(
-                                                                       [str(round(snr[ind], 2))]))
-    annot.set_text(text)
-    annot.get_bbox_patch().set_facecolor((c[ind]))
-    annot.get_bbox_patch().set_alpha(0.4)
-    return text
+    def set_ylabel(self, label):
+        plt.ylabel(label)
 
-def onpick(event):
-    #vis = annot.get_visible()
-    #annot.set_visible(True)
-    global ind
-    ind = event.ind[-1]
-    #print("first value ind"+str(ind))
+    def set_title(self, title):
+        plt.title(title + '\n' + str(len(li_cqi)) + " samples")
 
-    update_annot(ind)
-    annot.set_visible(True)
-    fig.canvas.draw_idle()
-    #print (len(ind))
-    #print('onpick points:', update_annot(ind))
-def press(event):
-    key = event.key
-    sys.stdout.flush()
-    global ind
-    if key == 'left':
+    def set_legend(self, lowper, highper):
+        red = mpatches.Patch(color='red', label="0 to 7 (" + str(lowper) + "%)")
+        green = mpatches.Patch(color='green', label="7 to 15 (" + str(highper) + "%)")
+        plt.legend(handles=[red, green ])
 
-        ind += 1
-        #print("2nd value ind" + str(ind))
-        update_annot(ind)
-        annot.set_visible(True)
-        fig.canvas.draw_idle()
-    elif key == 'right':
+    def plt_show(self):
+        plt.show()
 
-        ind -= 1
-        #print("3rd value ind" + str(ind))
-        update_annot(ind)
-        annot.set_visible(True)
-        fig.canvas.draw_idle()
+    def createannot(self):
+        self.annot = self.ax.annotate("", xy=(0,0), xytext=(20,20), textcoords="offset points",
+                                      bbox=dict(boxstyle="round", fc="w"), arrowprops=dict(arrowstyle="->"))
+        self.annot.set_visible(False)
 
-fig.canvas.mpl_connect('pick_event', onpick)
-fig.canvas.mpl_connect('key_press_event', press)
-#set legend
-red = mpatches.Patch(color='red', label="0 to 7 (" + str(low_per) + "%)")
-green = mpatches.Patch(color='green', label="7 to 15 (" + str(high_per) + "%)")
-plt.legend(handles=[red , green ])
-        
-#Display the map
-plt.show()
+    def update_annot(self, ind):
+        pos = self.scatter.get_offsets()[ind]
+        self.annot.xy = pos
+        # text = " CQI {}".format(" ".join([str(round(li[ind],2))]))
+        text = " CQI {}\n RSRP {}\n RSRQ {}\n PCI {}\n SINR {}".format(" ".join([str(round(li_cqi[ind], 2))]),
+                                                                       " ".join(
+                                                                           [str(round(li_rsrp[ind], 2))]),
+                                                                       " ".join(
+                                                                           [str(round(li_rsrq[ind], 2))]),
+                                                                       " ".join([str(li_pci[ind])]),
+                                                                       " ".join(
+                                                                           [str(round(li_snr[ind], 2))]))
+        self.annot.set_text(text)
+        self.annot.get_bbox_patch().set_facecolor((self.c[ind]))
+        self.annot.get_bbox_patch().set_alpha(0.4)
+        return text
+
+
+class Events():
+    def __init__(self, annot, fig):
+        self.annot = annot
+        self.fig = fig
+
+    def onpick(self, event):
+    # vis = annot.get_visible()
+    # annot.set_visible(True)
+        global ind
+        ind = event.ind[-1]
+        print("first value ind"+str(ind))
+        pltt.update_annot(ind)
+        self.annot.set_visible(True)
+        self.fig.canvas.draw_idle()
+        # print (len(ind))
+        # print('onpick points:', update_annot(ind))
+
+    def press(self, event):
+        key = event.key
+        sys.stdout.flush()
+        global ind
+        if key == 'left':
+            ind += 1
+            print("2nd value ind" + str(ind))
+            pltt.update_annot(ind)
+            self.annot.set_visible(True)
+            self.fig.canvas.draw_idle()
+        elif key == 'right':
+            ind -= 1
+            print("3rd value ind" + str(ind))
+            pltt.update_annot(ind)
+            self.annot.set_visible(True)
+            self.fig.canvas.draw_idle()
+
+    def connect(self):
+        self.fig.canvas.mpl_connect('pick_event', self.onpick)
+        self.fig.canvas.mpl_connect('key_press_event', self.press)
+
+
+if __name__=='__main__':
+    npnan = np.nan
+    npwhere = np.where
+    df = pd.read_csv('tmp_export.csv')
+    dfm = DataFrame(df)
+    dfm.remove_empty('lte_cqi_cw0_1', npnan)
+    dfm.drop_duplicate('positioning_lon')
+    li = dfm.params_list()
+    low, high = dfm.get_cqi_percentage()
+    col = dfm.read_data()
+    pltt = Plot()
+    pltt.scatterplot(li_lon, li_lat, col.lte_cqi_cw0_1)
+    pltt.set_xlabel('Longitude')
+    pltt.set_ylabel('Latitude')
+    pltt.set_title('CQI plot')
+    pltt.set_legend(low, high)
+    pltt.createannot()
+    evt = Events(pltt.annot, pltt.fig)
+    evt.connect()
+    pltt.plt_show()
